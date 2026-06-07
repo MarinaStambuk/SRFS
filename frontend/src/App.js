@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
-const USLUGE = ['Šišanje', 'Bojanje', 'Kovrčanje'];
 const API = 'http://localhost:3001';
 
 export default function App() {
@@ -14,6 +13,25 @@ export default function App() {
   const [available, setAvailable] = useState(null);
   const [loading, setLoading] = useState(false);
   const pollingRef = useRef(null);
+  const [usluge, setUsluge] = useState([]);
+
+  useEffect(() => {
+    const fetchUsluge = async () => {
+      try {
+        const { data } = await axios.get(`${API}/usluge`);
+        setUsluge(data);
+      } catch (e) {
+        console.error('Greška pri dohvaćanju usluga', e);
+      }
+    };
+
+    fetchUsluge();
+  }, []);
+
+  const nazivUsluge = (id) => {
+    const odabrana = usluge.find(u => String(u.usluga_id) === String(id));
+    return odabrana ? odabrana.naziv : id;
+  };
 
   const danas = () => new Date().toISOString().split('T')[0];
   const dostupniSati = () => {
@@ -29,7 +47,7 @@ export default function App() {
     if (!usluga) return alert('Odaberi uslugu!');
     setLoading(true);
     try {
-      const { data } = await axios.post(`${API}/start-process`, { usluga });
+      const { data } = await axios.post(`http://localhost:3001/start-process`, { uslugaID: usluga });
       setProcessKey(data.processInstanceKey);
       setReservationId(data.reservationId);
       setKorak(1);
@@ -125,7 +143,7 @@ export default function App() {
       <p style={{ color: '#6b7280' }}>Odaberite uslugu:</p>
       <select style={field} value={usluga} onChange={e => setUsluga(e.target.value)}>
         <option value="">-- Odaberi --</option>
-        {USLUGE.map(u => <option key={u} value={u}>{u}</option>)}
+        {usluge.map(u => <option key={u.usluga_id} value={u.usluga_id}>{u.naziv}</option>)}
       </select>
       <button style={btn()} onClick={potvrdiUslugu} disabled={loading}>
         {loading ? 'Slanje…' : 'Potvrdi uslugu'}
@@ -136,7 +154,7 @@ export default function App() {
   if (korak === 1) return (
     <div style={page}><div style={card}>
       <h2>Odabir termina</h2>
-      <p style={{ color: '#6b7280' }}>Usluga: <strong>{usluga}</strong></p>
+      <p style={{ color: '#6b7280' }}>Usluga: <strong>{nazivUsluge(usluga)}</strong></p>
 
       <label style={{ display: 'block', textAlign: 'left', marginTop: '1rem', fontSize: '0.9rem', color: '#374151' }}>
         Datum
@@ -179,7 +197,7 @@ export default function App() {
       <p style={{ color: '#6b7280', marginTop: '0.25rem' }}>Provjerite detalje i potvrdite:</p>
 
       <div style={infoRow}>
-        <div><strong>Usluga:</strong> {usluga}</div>
+        <div><strong>Usluga:</strong> {nazivUsluge(usluga)}</div>
         <div style={{ marginTop: '0.4rem' }}>
           <strong>Termin:</strong> {datum} u {String(sat).padStart(2, '0')}:00
         </div>
@@ -198,7 +216,7 @@ export default function App() {
         <>
           <h2 style={{ color: '#16a34a', marginTop: '0.5rem' }}>Rezervacija uspješna!</h2>
           <p style={{ color: '#6b7280', marginTop: '0.5rem' }}>
-            <strong>{usluga}</strong><br />
+            <strong>{nazivUsluge(usluga)}</strong><br />
             {datum} u {String(sat).padStart(2, '0')}:00
           </p>
         </>
